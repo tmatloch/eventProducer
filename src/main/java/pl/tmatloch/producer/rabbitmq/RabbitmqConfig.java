@@ -14,14 +14,14 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitmqConfig {
 
 
-    @Bean("slowPermutationExchange")
-    public DirectExchange slowPermutationExchange() {
-        return new DirectExchange("slow.permutation.rpc");
+    @Bean("slowEventExchange")
+    public DirectExchange slowEventExchange() {
+        return new DirectExchange("slow.event.rpc");
     }
 
-    @Bean("fastPermutationExchange")
-    public DirectExchange fastPermutationExchange() {
-        return new DirectExchange("fast.permutation.rpc");
+    @Bean("fastEventExchange")
+    public DirectExchange fastEventExchange() {
+        return new DirectExchange("fast.event.rpc");
     }
 
     @Bean

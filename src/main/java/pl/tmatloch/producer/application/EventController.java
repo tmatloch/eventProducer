@@ -20,12 +20,12 @@ import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1.0/")
-public class PermutationController {
+@RequestMapping("/api/v1.0/event")
+public class EventController {
 
     private final AsyncRabbitTemplate asyncRabbitTemplate;
-    private final DirectExchange fastPermutationExchange;
-    private final DirectExchange slowPermutationExchange;
+    private final DirectExchange fastEventExchange;
+    private final DirectExchange slowEventExchange;
 
     private final Timer fastTimer;
     private final Timer slowTimer;
@@ -34,11 +34,11 @@ public class PermutationController {
     private final DistributionSummary fastExecutionTime;
 
     @Autowired
-    public PermutationController(AsyncRabbitTemplate rabbitTemplate, @Qualifier("fastPermutationExchange") DirectExchange fastPermutationExchange,
-                                 @Qualifier("slowPermutationExchange") DirectExchange slowPermutationExchange, MeterRegistry meterRegistry) {
+    public EventController(AsyncRabbitTemplate rabbitTemplate, @Qualifier("fastEventExchange") DirectExchange fastEventExchange,
+                           @Qualifier("slowEventExchange") DirectExchange slowEventExchange, MeterRegistry meterRegistry) {
         this.asyncRabbitTemplate = rabbitTemplate;
-        this.fastPermutationExchange = fastPermutationExchange;
-        this.slowPermutationExchange = slowPermutationExchange;
+        this.fastEventExchange = fastEventExchange;
+        this.slowEventExchange = slowEventExchange;
         this.slowExecutionTime = DistributionSummary
                 .builder("slowExecutionTime")
                 .baseUnit("millis")
@@ -60,13 +60,13 @@ public class PermutationController {
     }
 
 
-    @GetMapping("slow/permutation")
-    List<String> slowPermutation(@RequestParam("text") String text, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
-        log.info("slow/Permutation received text = {}", text);
-        PermutationMessage permutationMessage = PermutationMessage.create(text);
-        ListenableFuture<PermutationMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(slowPermutationExchange.getName(),"rpc", permutationMessage, new ParameterizedTypeReference<PermutationMessage>() {});
-        PermutationMessage result = future.get(120, TimeUnit.SECONDS);
-        log.info("slow/Permutation result count = {}", result!= null ? result.getResult().size(): "UNKNOWN");
+    @GetMapping("slow")
+    List<String> slowEvent(@RequestParam("text") String text, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
+        log.info("Event/slow received text = {}", text);
+        EventMessage eventMessage = EventMessage.create(text);
+        ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(slowEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
+        EventMessage result = future.get(120, TimeUnit.SECONDS);
+        log.info("Event/slow result count = {}", result!= null ? result.getResult().size(): "UNKNOWN");
         if(limit != null && result != null && result.getResult().size() > limit){
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
@@ -78,13 +78,13 @@ public class PermutationController {
         return result != null ? result.getResult() : null;
     }
 
-    @GetMapping("fast/permutation")
-    List<String> fastPermutation(@RequestParam("text") String text, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
-        log.info("fast/permutation received text = {}", text);
-        PermutationMessage permutationMessage = PermutationMessage.create(text);
-        ListenableFuture<PermutationMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(fastPermutationExchange.getName(),"rpc", permutationMessage, new ParameterizedTypeReference<PermutationMessage>() {});
-        PermutationMessage result = future.get(120, TimeUnit.SECONDS);
-        log.info("fast/Permutation result = {} count = {}", result, result!= null ? result.getResult().size(): "UNKNOWN");
+    @GetMapping("fast")
+    List<String> fastEvent(@RequestParam("text") String text, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
+        log.info("Event/fast received text = {}", text);
+        EventMessage eventMessage = EventMessage.create(text);
+        ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(fastEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
+        EventMessage result = future.get(120, TimeUnit.SECONDS);
+        log.info("Event/fast result = {} count = {}", result, result!= null ? result.getResult().size(): "UNKNOWN");
         if(limit != null && result != null && result.getResult().size() > limit){
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
