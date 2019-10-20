@@ -8,6 +8,7 @@ import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.rabbit.AsyncRabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,9 @@ import java.util.concurrent.TimeoutException;
 @RestController
 @RequestMapping("/api/v1.0/event")
 public class EventController {
+
+    @Value("${event.statistics.expiry:60s}")
+    private Duration statisticsExpiry;
 
     private final AsyncRabbitTemplate asyncRabbitTemplate;
     private final DirectExchange fastEventExchange;
@@ -50,11 +54,11 @@ public class EventController {
                 .register(meterRegistry);
         this.fastTimer = Timer.builder("fastExecutionTimer")
                 .publishPercentileHistogram()
-                .distributionStatisticExpiry(Duration.ofSeconds(20))
+                .distributionStatisticExpiry(statisticsExpiry)
                 .register(meterRegistry);
         this.slowTimer = Timer.builder("slowExecutionTimer")
                 .publishPercentileHistogram()
-                .distributionStatisticExpiry(Duration.ofSeconds(20))
+                .distributionStatisticExpiry(statisticsExpiry)
                 .register(meterRegistry);
 
     }
