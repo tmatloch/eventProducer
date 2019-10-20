@@ -45,20 +45,26 @@ public class EventController {
         this.slowEventExchange = slowEventExchange;
         this.slowExecutionTime = DistributionSummary
                 .builder("slowExecutionTime")
+                .publishPercentileHistogram(true)
+                .distributionStatisticExpiry(statisticsExpiry)
                 .baseUnit("millis")
                 .register(meterRegistry);
 
         this.fastExecutionTime =  DistributionSummary
                 .builder("fastExecutionTime")
+                .publishPercentileHistogram(true)
+                .distributionStatisticExpiry(statisticsExpiry)
                 .baseUnit("millis")
                 .register(meterRegistry);
         this.fastTimer = Timer.builder("fastExecutionTimer")
-                .publishPercentileHistogram()
-                .distributionStatisticExpiry(statisticsExpiry)
+                .publishPercentiles(0.95)
+                .distributionStatisticBufferLength(3)
+                .distributionStatisticExpiry(Duration.ofSeconds(20))
                 .register(meterRegistry);
         this.slowTimer = Timer.builder("slowExecutionTimer")
-                .publishPercentileHistogram()
-                .distributionStatisticExpiry(statisticsExpiry)
+                .publishPercentiles(0.95)
+                .distributionStatisticBufferLength(3)
+                .distributionStatisticExpiry(Duration.ofSeconds(20))
                 .register(meterRegistry);
 
     }
