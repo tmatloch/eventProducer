@@ -14,10 +14,14 @@ import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 @Slf4j
 @RestController
@@ -45,14 +49,16 @@ public class EventController {
         this.slowEventExchange = slowEventExchange;
         this.slowExecutionTime = DistributionSummary
                 .builder("slowExecutionTime")
-                .publishPercentileHistogram(true)
+                //.publishPercentileHistogram(true)
                 .distributionStatisticExpiry(statisticsExpiry)
                 .baseUnit("millis")
+                .sla(LongStream.range(2, 25).map(l ->  l * 50).toArray())
                 .register(meterRegistry);
 
         this.fastExecutionTime =  DistributionSummary
                 .builder("fastExecutionTime")
-                .publishPercentileHistogram(true)
+                .sla(LongStream.range(1, 20).map(l ->  l * 25).toArray())
+                //.publishPercentileHistogram(true)
                 .distributionStatisticExpiry(statisticsExpiry)
                 .baseUnit("millis")
                 .register(meterRegistry);
@@ -104,5 +110,13 @@ public class EventController {
             return result.getResult().subList(0,   limit - 1);
         }
         return result != null ? result.getResult() : null;
+    }
+
+    @GetMapping("stats")
+    Map<String, Object>  getStatisctics() {
+        Map<String, Object> summaries =  new HashMap<>();
+        summaries.put("fast", fastExecutionTime.takeSnapshot().toString());
+        summaries.put("slow", slowExecutionTime.takeSnapshot().toString());
+        return summaries;
     }
 }
