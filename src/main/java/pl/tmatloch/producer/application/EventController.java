@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 @Slf4j
@@ -35,11 +34,11 @@ public class EventController {
     private final DirectExchange fastEventExchange;
     private final DirectExchange slowEventExchange;
 
-    private final Timer fastTimer;
-    private final Timer slowTimer;
+    private final Timer fastCurrentTimer;
+    private final Timer slowCurrentTimer;
 
-    private final DistributionSummary slowExecutionTime;
-    private final DistributionSummary fastExecutionTime;
+    private final Timer slowExecutionHistogram;
+    private final Timer fastExecutionHistogram;
 
     @Autowired
     public EventController(AsyncRabbitTemplate rabbitTemplate, @Qualifier("fastEventExchange") DirectExchange fastEventExchange,
@@ -47,27 +46,25 @@ public class EventController {
         this.asyncRabbitTemplate = rabbitTemplate;
         this.fastEventExchange = fastEventExchange;
         this.slowEventExchange = slowEventExchange;
-        this.slowExecutionTime = DistributionSummary
+        this.slowExecutionHistogram = Timer
                 .builder("slowExecutionTime")
                 //.publishPercentileHistogram(true)
                 .distributionStatisticExpiry(statisticsExpiry)
-                .baseUnit("millis")
-                .sla(LongStream.range(2, 25).map(l ->  l * 50).toArray())
+                .sla(LongStream.range(1, 30).map(l ->  l * 25).mapToObj(Duration::ofMillis).toArray(Duration[]::new))
                 .register(meterRegistry);
 
-        this.fastExecutionTime =  DistributionSummary
+        this.fastExecutionHistogram =  Timer
                 .builder("fastExecutionTime")
-                .sla(LongStream.range(1, 20).map(l ->  l * 25).toArray())
+                .sla(LongStream.range(1, 15).map(l ->  l * 20).mapToObj(Duration::ofMillis).toArray(Duration[]::new))
                 //.publishPercentileHistogram(true)
                 .distributionStatisticExpiry(statisticsExpiry)
-                .baseUnit("millis")
                 .register(meterRegistry);
-        this.fastTimer = Timer.builder("fastExecutionTimer")
+        this.fastCurrentTimer = Timer.builder("fastExecutionTimer")
                 .publishPercentiles(0.95)
                 .distributionStatisticBufferLength(3)
                 .distributionStatisticExpiry(Duration.ofSeconds(20))
                 .register(meterRegistry);
-        this.slowTimer = Timer.builder("slowExecutionTimer")
+        this.slowCurrentTimer = Timer.builder("slowExecutionTimer")
                 .publishPercentiles(0.95)
                 .distributionStatisticBufferLength(3)
                 .distributionStatisticExpiry(Duration.ofSeconds(20))
@@ -87,8 +84,8 @@ public class EventController {
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
             log.info("Slow execution time millis = {}", executionTimeMillis);
-            slowExecutionTime.record(executionTimeMillis);
-            slowTimer.record(executionTime);
+            slowExecutionHistogram.record(executionTime);
+            slowCurrentTimer.record(executionTime);
             return result.getResult().subList(0,   limit - 1);
         }
         return result != null ? result.getResult() : null;
@@ -105,8 +102,8 @@ public class EventController {
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
             log.info("Fast execution time millis = {}", executionTimeMillis);
-            fastExecutionTime.record(executionTimeMillis);
-            fastTimer.record(executionTime);
+            fastExecutionHistogram.record(executionTime);
+            fastCurrentTimer.record(executionTime);
             return result.getResult().subList(0,   limit - 1);
         }
         return result != null ? result.getResult() : null;
@@ -115,8 +112,8 @@ public class EventController {
     @GetMapping("stats")
     Map<String, Object>  getStatisctics() {
         Map<String, Object> summaries =  new HashMap<>();
-        summaries.put("fast", fastExecutionTime.takeSnapshot().toString());
-        summaries.put("slow", slowExecutionTime.takeSnapshot().toString());
+        summaries.put("fast", fastExecutionHistogram.takeSnapshot().toString());
+        summaries.put("slow", slowExecutionHistogram.takeSnapshot().toString());
         return summaries;
     }
 }
