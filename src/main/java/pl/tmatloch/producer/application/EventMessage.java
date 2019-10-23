@@ -23,11 +23,12 @@ public class EventMessage {
     Instant onEndProcess;
 
     String processData;
+    Integer multiply;
     List<String> result;
 
-    public static EventMessage create(String dataToProcess) {
+    public static EventMessage create(String dataToProcess, Integer multiply) {
         String id = UUID.randomUUID().toString();
         Instant instant = Instant.now();
-        return new EventMessage(id, instant, null, null, dataToProcess, null);
+        return new EventMessage(id, instant, null, null, dataToProcess, multiply, null);
     }
 }

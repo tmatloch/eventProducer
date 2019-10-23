@@ -74,9 +74,9 @@ public class EventController {
 
 
     @GetMapping("slow")
-    List<String> slowEvent(@RequestParam("text") String text, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
+    List<String> slowEvent(@RequestParam("text") String text, @RequestParam Integer multiply, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
         log.info("Event/slow received text = {}", text);
-        EventMessage eventMessage = EventMessage.create(text);
+        EventMessage eventMessage = EventMessage.create(text, multiply);
         ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(slowEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
         EventMessage result = future.get(120, TimeUnit.SECONDS);
         log.info("Event/slow result count = {}", result!= null ? result.getResult().size(): "UNKNOWN");
@@ -92,9 +92,9 @@ public class EventController {
     }
 
     @GetMapping("fast")
-    List<String> fastEvent(@RequestParam("text") String text, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
+    List<String> fastEvent(@RequestParam("text") String text, @RequestParam Integer multiply, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
         log.info("Event/fast received text = {}", text);
-        EventMessage eventMessage = EventMessage.create(text);
+        EventMessage eventMessage = EventMessage.create(text, multiply);
         ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(fastEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
         EventMessage result = future.get(120, TimeUnit.SECONDS);
         log.info("Event/fast result = {} count = {}", result, result!= null ? result.getResult().size(): "UNKNOWN");
