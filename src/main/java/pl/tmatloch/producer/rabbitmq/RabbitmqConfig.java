@@ -34,7 +34,7 @@ public class RabbitmqConfig {
     public AsyncRabbitTemplate asyncRabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jackson2JsonMessageConverter());
-        template.setReplyTimeout(120000);
+        template.setReplyTimeout(60000);
         return new AsyncRabbitTemplate(template);
     }
 }

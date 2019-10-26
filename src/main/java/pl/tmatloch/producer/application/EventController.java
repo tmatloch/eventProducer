@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,12 +52,12 @@ public class EventController {
                 .builder("slowExecutionTime")
                 //.publishPercentileHistogram(true)
                 .distributionStatisticExpiry(statisticsExpiry)
-                .sla(LongStream.range(1, 30).map(l ->  l * 25).mapToObj(Duration::ofMillis).toArray(Duration[]::new))
+                .sla(LongStream.range(1, 20).map(l ->  l * 100).mapToObj(Duration::ofMillis).toArray(Duration[]::new))
                 .register(meterRegistry);
 
         this.fastExecutionHistogram =  Timer
                 .builder("fastExecutionTime")
-                .sla(LongStream.range(1, 15).map(l ->  l * 20).mapToObj(Duration::ofMillis).toArray(Duration[]::new))
+                .sla(LongStream.range(1, 20).map(l ->  l * 100).mapToObj(Duration::ofMillis).toArray(Duration[]::new))
                 //.publishPercentileHistogram(true)
                 .distributionStatisticExpiry(statisticsExpiry)
                 .register(meterRegistry);
@@ -73,40 +75,40 @@ public class EventController {
     }
 
 
-    @GetMapping("slow")
-    List<String> slowEvent(@RequestParam("text") String text, @RequestParam Integer multiply, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
+    @PostMapping("slow")
+    ResponseEntity slowEvent(@RequestParam("text") String text, @RequestParam Integer multiply) throws InterruptedException, ExecutionException, TimeoutException {
         log.info("Event/slow received text = {}", text);
         EventMessage eventMessage = EventMessage.create(text, multiply);
         ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(slowEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
         EventMessage result = future.get(120, TimeUnit.SECONDS);
         log.info("Event/slow result count = {}", result!= null ? result.getResult().size(): "UNKNOWN");
-        if(limit != null && result != null && result.getResult().size() > limit){
+        if(result != null) {
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
             log.info("Slow execution time millis = {}", executionTimeMillis);
             slowExecutionHistogram.record(executionTime);
             slowCurrentTimer.record(executionTime);
-            return result.getResult().subList(0,   limit - 1);
+            return ResponseEntity.ok().build();
         }
-        return result != null ? result.getResult() : null;
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
-    @GetMapping("fast")
-    List<String> fastEvent(@RequestParam("text") String text, @RequestParam Integer multiply, @RequestParam Integer limit) throws InterruptedException, ExecutionException, TimeoutException {
+    @PostMapping("fast")
+    ResponseEntity fastEvent(@RequestParam("text") String text, @RequestParam Integer multiply) throws InterruptedException, ExecutionException, TimeoutException {
         log.info("Event/fast received text = {}", text);
         EventMessage eventMessage = EventMessage.create(text, multiply);
         ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(fastEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
         EventMessage result = future.get(120, TimeUnit.SECONDS);
         log.info("Event/fast result = {} count = {}", result, result!= null ? result.getResult().size(): "UNKNOWN");
-        if(limit != null && result != null && result.getResult().size() > limit){
+        if(result != null) {
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
             log.info("Fast execution time millis = {}", executionTimeMillis);
             fastExecutionHistogram.record(executionTime);
             fastCurrentTimer.record(executionTime);
-            return result.getResult().subList(0,   limit - 1);
+            return ResponseEntity.ok().build();
         }
-        return result != null ? result.getResult() : null;
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
     @GetMapping("stats")
