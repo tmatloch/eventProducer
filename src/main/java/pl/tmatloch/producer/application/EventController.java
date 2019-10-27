@@ -81,7 +81,7 @@ public class EventController {
         EventMessage eventMessage = EventMessage.create(text, multiply);
         ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(slowEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
         EventMessage result = future.get(120, TimeUnit.SECONDS);
-        log.info("Event/slow result count = {}", result!= null ? result.getResult().size(): "UNKNOWN");
+        log.info("Event/slow result = {} status = {}", result, result!= null ? result.getResultStatus(): "UNKNOWN");
         if(result != null) {
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();
@@ -99,7 +99,7 @@ public class EventController {
         EventMessage eventMessage = EventMessage.create(text, multiply);
         ListenableFuture<EventMessage> future = asyncRabbitTemplate.convertSendAndReceiveAsType(fastEventExchange.getName(),"rpc", eventMessage, new ParameterizedTypeReference<EventMessage>() {});
         EventMessage result = future.get(120, TimeUnit.SECONDS);
-        log.info("Event/fast result = {} count = {}", result, result!= null ? result.getResult().size(): "UNKNOWN");
+        log.info("Event/fast result = {} status = {}", result, result!= null ? result.getResultStatus() : "UNKNOWN");
         if(result != null) {
             Duration executionTime = Duration.between(result.getOnCreateTime(), result.getOnEndProcess());
             long executionTimeMillis = executionTime.toMillis();

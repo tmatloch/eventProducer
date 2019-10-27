@@ -24,7 +24,7 @@ public class EventMessage {
 
     String processData;
     Integer multiply;
-    List<String> result;
+    String resultStatus;
 
     public static EventMessage create(String dataToProcess, Integer multiply) {
         String id = UUID.randomUUID().toString();
